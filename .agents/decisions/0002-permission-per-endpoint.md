@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforcement: planned.
+Accepted. Enforcement: enforced (convention test + deny-by-default guard).
 
 ## Context
 
@@ -16,6 +16,5 @@ Internal tools handle sensitive operations (refunds, customer data). An endpoint
 
 ## Consequences
 
-- Planned enforcement: a NestJS convention test scans all controllers and fails if any handler lacks `@RequirePermission()` or `@Public()`.
+- Enforced: `server/test/permission-convention.api-spec.ts` scans all controllers and fails if any handler lacks a handler-level `@RequirePermission()` or `@Public()`; a deliberate-violation fixture proves it. The global `PermissionGuard` refuses such handlers at runtime.
 - Adding a public endpoint is a visible, reviewable change.
-- Until the convention test exists, this rule is enforced only by review.

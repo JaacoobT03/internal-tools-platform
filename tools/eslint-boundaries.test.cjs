@@ -43,6 +43,7 @@ describe('ESLint boundary rules', () => {
     'client/app/alpha/bad-requires-other-app.cjs',
     'client/app/alpha/bad-dynamic-import-other-app.js',
     'client/lib/bad-imports-app.js',
+    'client/app/(platform)/audit/bad-imports-app.ts',
   ])('rejects %s', (file) => {
     expect(violations[file]).toHaveLength(1);
   });
@@ -55,7 +56,11 @@ describe('ESLint boundary rules', () => {
     'client/lib/util.ts',
     'server/src/apps/alpha/ok-imports.js',
     'client/app/alpha/ok-imports.jsx',
+    'client/app/(platform)/audit/ok-imports-lib.ts',
+    // (platform) is client-platform, not an app: importing it is not cross-app.
+    'client/app/alpha/ok-imports-platform-route.ts',
   ])('allows %s', (file) => {
+    expect(violations[file]).toBeDefined();
     expect(violations[file]).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforcement: planned.
+Accepted. Enforcement: enforced (money schema test + SDK-import lint rule); idempotency-key usage via per-app tests.
 
 ## Context
 
@@ -16,6 +16,5 @@ Floating-point money causes rounding errors, and direct calls to payment provide
 
 ## Consequences
 
-- Planned enforcement: a money-DTO lint rule forbidding float/number-with-decimals fields for amounts.
-- Apps never import a payment provider SDK directly; swapping providers is a platform change.
-- Until the lint rule exists, this rule is enforced by review.
+- Enforced: the Zod `MoneySchema` (`server/src/platform/money/`) accepts only safe integer cents plus an ISO 4217 code and rejects floats (tested). The mock payments adapter returns the stored result for a repeated idempotency key (tested). The mock keeps keys in process memory, so its guarantee ends at a restart; a real adapter must make idempotency durable (e.g. pass the key to the provider).
+- Apps never import a payment provider SDK directly; swapping providers is a platform change. Enforced by the ESLint rule `platform/no-payment-sdk-import`, proven by `tools/eslint-platform-rules.test.cjs`.
