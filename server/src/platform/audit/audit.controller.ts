@@ -10,6 +10,7 @@ const AuditQuerySchema = z
     entity: z.string().min(1).optional(),
     entityId: z.string().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(100),
+    cursor: z.uuid().optional(),
   })
   .strict();
 
@@ -24,7 +25,7 @@ export class AuditController {
     @Query(new ZodValidationPipe(AuditQuerySchema))
     query: z.infer<typeof AuditQuerySchema>,
   ) {
-    const entries = await this.audit.list(query);
-    return { entries: maskPiiDeep(entries) };
+    const { entries, nextCursor } = await this.audit.list(query);
+    return { entries: maskPiiDeep(entries), nextCursor };
   }
 }

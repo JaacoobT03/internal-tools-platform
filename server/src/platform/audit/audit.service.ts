@@ -19,6 +19,8 @@ export interface AuditQuery {
   entity?: string;
   entityId?: string;
   limit: number;
+  /** Id of the last entry of the previous page. */
+  cursor?: string;
 }
 
 function toJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
@@ -56,11 +58,17 @@ export class AuditService {
     });
   }
 
-  list(query: AuditQuery) {
-    return this.prisma.auditEntry.findMany({
+  /** Newest first. Pass `nextCursor` back as `cursor` to get the next (older) page. */
+  async list(query: AuditQuery) {
+    const rows = await this.prisma.auditEntry.findMany({
       where: { entity: query.entity, entityId: query.entityId },
       orderBy: [{ timestamp: 'desc' }, { id: 'desc' }],
-      take: query.limit,
+      take: query.limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     });
+    const entries = rows.slice(0, query.limit);
+    const nextCursor =
+      rows.length > query.limit ? entries[entries.length - 1].id : null;
+    return { entries, nextCursor };
   }
 }

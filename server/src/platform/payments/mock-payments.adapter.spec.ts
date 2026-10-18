@@ -57,6 +57,35 @@ describe('MockPaymentsAdapter', () => {
     expect(adapter.executed).toHaveLength(1);
   });
 
+  it('treats a retry with reordered fields as the same request', async () => {
+    const adapter = new MockPaymentsAdapter();
+    const first = await adapter.charge({
+      idempotencyKey: 'k',
+      amount: { amountCents: 100, currency: 'EUR' },
+      reference: 'r',
+    });
+    const retry = await adapter.charge({
+      reference: 'r',
+      amount: { currency: 'EUR', amountCents: 100 },
+      idempotencyKey: 'k',
+    });
+    expect(retry).toBe(first);
+    expect(adapter.executed).toHaveLength(1);
+  });
+
+  it('refuses reusing a charge key for a refund', async () => {
+    const adapter = new MockPaymentsAdapter();
+    await adapter.charge({
+      idempotencyKey: 'k',
+      amount: eur(100),
+      reference: 'p',
+    });
+    await expect(
+      adapter.refund({ idempotencyKey: 'k', amount: eur(100), paymentId: 'p' }),
+    ).rejects.toBeInstanceOf(IdempotencyKeyReuseError);
+    expect(adapter.executed).toHaveLength(1);
+  });
+
   it('rejects float amounts and missing idempotency keys without paying', async () => {
     const adapter = new MockPaymentsAdapter();
     await expect(

@@ -21,6 +21,11 @@ interface StoredOperation {
  * Development-only adapter. Keyed by idempotency key: a repeated call with
  * the same key returns the stored result (even while the first call is still
  * in flight) and never executes the payment twice.
+ *
+ * Keys live in process memory, so the guarantee holds only until the server
+ * restarts. That is acceptable for a mock that moves no money; a real adapter
+ * must forward the key to the provider (or persist it) so retries survive
+ * restarts (see `PaymentsAdapter`).
  */
 @Injectable()
 export class MockPaymentsAdapter implements PaymentsAdapter {
@@ -29,7 +34,13 @@ export class MockPaymentsAdapter implements PaymentsAdapter {
   readonly executed: PaymentResult[] = [];
 
   async charge(request: ChargeRequest): Promise<PaymentResult> {
-    return await this.once('charge', request.idempotencyKey, request, () => ({
+    const fingerprint = JSON.stringify([
+      'charge',
+      request.amount?.amountCents,
+      request.amount?.currency,
+      request.reference,
+    ]);
+    return await this.once(request.idempotencyKey, fingerprint, () => ({
       id: `mock_ch_${randomUUID()}`,
       kind: 'charge',
       status: 'succeeded',
@@ -38,7 +49,13 @@ export class MockPaymentsAdapter implements PaymentsAdapter {
   }
 
   async refund(request: RefundRequest): Promise<PaymentResult> {
-    return await this.once('refund', request.idempotencyKey, request, () => ({
+    const fingerprint = JSON.stringify([
+      'refund',
+      request.amount?.amountCents,
+      request.amount?.currency,
+      request.paymentId,
+    ]);
+    return await this.once(request.idempotencyKey, fingerprint, () => ({
       id: `mock_re_${randomUUID()}`,
       kind: 'refund',
       status: 'succeeded',
@@ -47,13 +64,11 @@ export class MockPaymentsAdapter implements PaymentsAdapter {
   }
 
   private once(
-    kind: PaymentResult['kind'],
     idempotencyKey: string,
-    request: ChargeRequest | RefundRequest,
+    fingerprint: string,
     execute: () => PaymentResult,
   ): Promise<PaymentResult> {
     const key = IdempotencyKeySchema.parse(idempotencyKey);
-    const fingerprint = JSON.stringify([kind, request]);
     const stored = this.operations.get(key);
     if (stored) {
       if (stored.fingerprint !== fingerprint) {

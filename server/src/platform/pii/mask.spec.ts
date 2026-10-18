@@ -34,6 +34,12 @@ describe('findUnmaskedPii', () => {
     ]);
   });
 
+  it('finds PII used as object keys', () => {
+    expect(findUnmaskedPii({ 'jane@example.com': true })).toEqual([
+      { kind: 'email', masked: 'j***@example.com' },
+    ]);
+  });
+
   it('ignores masked values, ids and non-Luhn digit runs', () => {
     expect(
       findUnmaskedPii({
@@ -59,5 +65,17 @@ describe('maskPiiDeep', () => {
       after: { email: 'j***@example.com', card: '**** **** **** 4242', n: 5 },
       timestamp: date,
     });
+  });
+
+  it('masks PII used as object keys without merging colliding keys', () => {
+    const masked = maskPiiDeep({
+      byEmail: { 'jane@example.com': 1, 'jim@example.com': 2 },
+      '4242424242424242': 'card',
+    });
+    expect(masked).toEqual({
+      byEmail: { 'j***@example.com': 1, 'j***@example.com (2)': 2 },
+      '**** **** **** 4242': 'card',
+    });
+    expect(findUnmaskedPii(masked)).toEqual([]);
   });
 });

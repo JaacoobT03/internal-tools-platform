@@ -106,7 +106,44 @@ describe('Append-only audit log (ADR 0003)', () => {
             timestamp: expect.any(String) as unknown,
           }),
         ],
+        nextCursor: null,
       });
+    });
+
+    it('pages through older entries with a cursor', async () => {
+      const pagedId = randomUUID();
+      const base = Date.now();
+      for (const [i, action] of ['first', 'second', 'third'].entries()) {
+        await prisma.auditEntry.create({
+          data: {
+            actor: 'u-requester',
+            entity: 'test.Paged',
+            entityId: pagedId,
+            action,
+            timestamp: new Date(base + i * 1000),
+          },
+        });
+      }
+      interface Page {
+        entries: { id: string; action: string }[];
+        nextCursor: string | null;
+      }
+      const page = async (cursor?: string): Promise<Page> => {
+        const response = await asUser(app, 'auditor')
+          .get('/audit')
+          .query({ entityId: pagedId, limit: 2, ...(cursor && { cursor }) })
+          .expect(200);
+        return response.body as Page;
+      };
+      const actions = (body: Page) => body.entries.map((e) => e.action);
+
+      const first = await page();
+      expect(actions(first)).toEqual(['third', 'second']);
+      expect(first.nextCursor).toBe(first.entries[1].id);
+
+      const second = await page(first.nextCursor ?? undefined);
+      expect(actions(second)).toEqual(['first']);
+      expect(second.nextCursor).toBeNull();
     });
 
     it.each<SeedUserKey>([
@@ -125,6 +162,7 @@ describe('Append-only audit log (ADR 0003)', () => {
     it('validates query parameters', async () => {
       await asUser(app, 'auditor').get('/audit?limit=abc').expect(400);
       await asUser(app, 'auditor').get('/audit?unknown=1').expect(400);
+      await asUser(app, 'auditor').get('/audit?cursor=nope').expect(400);
     });
   });
 });

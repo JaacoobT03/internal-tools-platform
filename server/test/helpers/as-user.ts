@@ -102,7 +102,7 @@ async function checkTripwires(
   const isRevealEndpoint =
     response.headers[PII_REVEAL_HEADER.toLowerCase()] === 'true';
   if (!isRevealEndpoint) {
-    const leaks = findUnmaskedPii(response.text ?? response.body);
+    const leaks = findUnmaskedPii([response.text, response.body]);
     if (leaks.length > 0) {
       throw new TripwireError(
         `PII tripwire: ${route} returned unmasked ${leaks

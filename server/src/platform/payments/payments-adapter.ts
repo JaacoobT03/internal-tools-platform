@@ -23,7 +23,12 @@ export interface PaymentResult {
 /**
  * The only way to move money (ADR 0006). Payment provider SDKs may only be
  * imported under server/src/platform/payments/ (ESLint rule
- * `platform/no-payment-sdk-imports`).
+ * `platform/no-payment-sdk-import`).
+ *
+ * Implementations must make idempotency durable: a retry with the same key
+ * returns the original result even after a restart (e.g. by passing the key
+ * to the provider's own idempotency support). The mock adapter is the only
+ * exception and keeps keys in memory.
  */
 export interface PaymentsAdapter {
   charge(request: ChargeRequest): Promise<PaymentResult>;

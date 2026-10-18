@@ -41,7 +41,7 @@ export interface UnmaskedPii {
   masked: string;
 }
 
-/** Finds unmasked emails and (Luhn-valid) card numbers in any string inside `value`. */
+/** Finds unmasked emails and (Luhn-valid) card numbers in any string or key inside `value`. */
 export function findUnmaskedPii(value: unknown): UnmaskedPii[] {
   const found: UnmaskedPii[] = [];
   walkStrings(value, (text) => {
@@ -56,7 +56,7 @@ export function findUnmaskedPii(value: unknown): UnmaskedPii[] {
   return found;
 }
 
-/** Returns a copy of `value` with every email and card number in its strings masked. */
+/** Returns a copy of `value` with every email and card number in its strings and keys masked. */
 export function maskPiiDeep<T>(value: T): T {
   return walkStrings(value, (text) => {
     let masked = text.replace(EMAIL_PATTERN, maskEmail);
@@ -67,6 +67,7 @@ export function maskPiiDeep<T>(value: T): T {
   });
 }
 
+/** Visits every string in `value`, including plain-object keys. */
 function walkStrings<T>(value: T, visit: (text: string) => string): T {
   if (typeof value === 'string') return visit(value) as T;
   if (Array.isArray(value)) {
@@ -74,12 +75,16 @@ function walkStrings<T>(value: T, visit: (text: string) => string): T {
   }
   if (value !== null && typeof value === 'object') {
     if (Object.getPrototypeOf(value) !== Object.prototype) return value;
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        key,
-        walkStrings(item, visit),
-      ]),
-    ) as T;
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      let newKey = visit(key);
+      // Two keys that mask to the same text must not overwrite each other.
+      for (let n = 2; newKey !== key && newKey in result; n++) {
+        newKey = `${visit(key)} (${n})`;
+      }
+      result[newKey] = walkStrings(item, visit);
+    }
+    return result as T;
   }
   return value;
 }

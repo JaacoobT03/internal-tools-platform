@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { setCurrentUserId } from '../../../lib/session';
 import AuditLogPage from './page';
 
@@ -54,6 +54,48 @@ describe('Audit log page', () => {
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
     },
   );
+
+  it('loads older entries with the cursor', async () => {
+    setCurrentUserId('u-auditor');
+    const entry = (id: string, action: string) => ({
+      id,
+      actor: 'u-approver',
+      entity: 'platform.ApprovalRequest',
+      entityId: 'r-1',
+      action,
+      before: null,
+      after: null,
+      timestamp: '2026-10-18T12:00:00.000Z',
+    });
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ entries: [entry('2', 'newer')], nextCursor: '2' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ entries: [entry('1', 'older')], nextCursor: null }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<AuditLogPage />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Load older entries' }),
+    );
+    expect(await screen.findByText('older')).toBeInTheDocument();
+    expect(screen.getByText('newer')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3001/audit?cursor=2',
+      expect.objectContaining({ headers: { 'X-User-Id': 'u-auditor' } }),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Load older entries' }),
+    ).not.toBeInTheDocument();
+  });
 
   it('shows an empty state', async () => {
     setCurrentUserId('u-auditor');
