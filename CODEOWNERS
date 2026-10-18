@@ -1,0 +1,15 @@
+# Default owner until other owners exist.
+*                     @JaacoobT03
+
+# Harness and governance
+/AGENTS.md            @JaacoobT03
+/.agents/             @JaacoobT03
+/.github/             @JaacoobT03
+/CODEOWNERS           @JaacoobT03
+
+# Platform code
+/server/src/platform/ @JaacoobT03
+/client/lib/          @JaacoobT03
+
+# Infrastructure (future)
+/docker-compose*.yml  @JaacoobT03
