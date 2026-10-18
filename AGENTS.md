@@ -25,7 +25,7 @@ Rules for every agent and human contributor. Read the critical rules first; deta
 | 5. Money as integer cents                            | Money-DTO lint rule forbidding float fields                                                                                                       | planned  |
 | 6. No cross-app imports; platform never imports apps | `eslint-plugin-boundaries` rules in `eslint.config.mjs`; each rule proven to fail on a deliberate violation by `tools/eslint-boundaries.test.cjs` | enforced |
 | 7. App PRs don't touch platform                      | GitHub ruleset `protect-main` on `main` requires a PR and code owner review (`CODEOWNERS`). The repo admin can bypass it in this one-person repo. | enforced |
-| 8a. Lint, build and tests green before merge         | CI job `ci` plus the required status check in the GitHub ruleset `protect-main`                                                                   | planned  |
+| 8a. Lint, build and tests green before merge         | CI job `ci` plus the required status check in the GitHub ruleset `protect-main`                                                                   | enforced |
 | 8b. Spec → failing test → implementation             | Written only; reviewer checks                                                                                                                     | planned  |
 | 9. Ask before new tech                               | Written rule only                                                                                                                                 | planned  |
 
