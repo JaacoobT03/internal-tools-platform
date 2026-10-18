@@ -4,6 +4,15 @@
 (`global-setup.ts` runs `prisma migrate deploy` first; override the URL with
 `TEST_DATABASE_URL`).
 
+## Where tests live
+
+- Platform API tests: `server/test/*.api-spec.ts`.
+- App API tests: `server/src/apps/<name>/test/<name>.api-spec.ts`, inside the
+  app folder so an app PR touches no harness files. `jest-api.json` picks up
+  every `*.api-spec.ts`; `tsconfig.build.json` excludes them from the server
+  build and the unit-test config never runs them. `tools/app-api-tests.test.cjs`
+  guards all three.
+
 ## Helpers (`helpers/`)
 
 | Helper               | What it does                                                                                                     |

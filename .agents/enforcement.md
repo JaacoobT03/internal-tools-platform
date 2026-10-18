@@ -17,7 +17,7 @@ Detail behind the enforcement table in [AGENTS.md](../AGENTS.md#enforcement-stat
 
 ## 3. Two-person approvals — enforced
 
-- `server/test/approvals.api-spec.ts` proves: pending has no effect, self-approval 403, missing approver role 403, the effect runs once in one transaction with the status change and audit entry, double-approve 409 without re-running, every transition audited.
+- `server/test/approvals.api-spec.ts` proves: pending has no effect, self-approval 403, missing approver role 403, the effect runs once in one transaction with the status change and audit entry, double-approve 409 without re-running, every transition audited; an optional `onReject` runs once in the rejection's transaction and rolls back with it; `submit(…, tx)` joins the caller's transaction.
 - Not covered: app-specific thresholds need per-app tests.
 
 ## 4. PII masking — enforced

@@ -26,7 +26,7 @@ Follow these steps in order. Read `AGENTS.md` first; its critical rules apply th
 
 Write tests for every Required behavior item and every test in **Required tests** below. Confirm they fail before implementing.
 
-Use the platform test helpers in `server/test/helpers/` (see `server/test/README.md`):
+Put the app's API tests in `server/src/apps/<name>/test/<name>.api-spec.ts` (picked up by `pnpm test:api`, excluded from the build) and its unit tests next to the code as `*.spec.ts`. Use the platform test helpers in `server/test/helpers/` (see `server/test/README.md`):
 
 - `createTestApp()` boots the real app; `asUser(app, 'requester' | 'approver' | 'requesterApprover' | 'auditor' | 'viewer')` sends requests as a seed user; `resetSeed()` empties data tables (never the audit log) in `beforeEach`.
 - The `asUser` tripwires apply automatically: a test fails if any response contains an unmasked email or card number (unless the handler is a `@RevealEndpoint()`), or if a successful POST/PUT/PATCH/DELETE writes no audit entry. Do not bypass them with raw supertest calls.
@@ -36,9 +36,10 @@ Use the platform test helpers in `server/test/helpers/` (see `server/test/README
 1. **Auth and permissions:** use the platform auth interface only (`PLATFORM_AUTH`, `@CurrentUser()`). Put `@RequirePermission('<name>.<resource>.<action>')` on every controller handler (not the class), or `@Public()` if listed in the spec. Grant the app's permissions to roles with `PermissionRegistry.grant()` at startup.
 2. **Input:** every `@Body()`, `@Query()`, `@Param()` passes `new ZodValidationPipe(schema)` (lint-enforced).
 3. **Audit writes:** every create/update/delete calls `AuditService.record(tx, { actor, entity, entityId, action, before, after })` inside the mutation's `prisma.$transaction`.
-4. **Approval flow:** register the effect with `ApprovalsService.registerHandler('<name>.<action>', fn)` at startup and call `submit(user, name, payload)` for above-threshold actions. The platform enforces pending-has-no-effect, approver role, no self-approval (403), run-once and 409 on re-approval, and audits every transition.
+4. **Approval flow:** register the effect with `ApprovalsService.registerHandler('<name>.<action>', fn)` at startup, or `registerHandler(name, { onApprove, onReject })` when a rejection must also change app data; each runs once, in the decision's transaction. For above-threshold actions call `submit(user, name, payload, tx)` inside the transaction that saves the app's pending record, so both are stored or neither. Keep PII out of the payload (store an id). The platform enforces pending-has-no-effect, approver role, no self-approval (403), run-once and 409 on re-approval, and audits every transition.
 5. **Masking:** mask email/card fields in every API response with `maskEmail` / `maskCard`; reveal endpoints use `@RevealEndpoint(permission)` and `PiiRevealService.reveal()`, which checks the permission and writes the audit entry.
 6. **Money:** amounts use `MoneySchema` (integer cents + currency); payments/refunds only via the injected `PAYMENTS_ADAPTER` with an idempotency key (provider SDK imports are lint-blocked outside the platform).
+7. **Client:** call the API only through `apiGet` / `apiPost` from `client/lib/api.ts`; never set the `X-User-Id` header in app code (ADR 0001).
 
 ## 5. Required tests
 

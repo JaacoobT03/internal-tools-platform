@@ -8,6 +8,7 @@ function mockFetch(status: number, body: unknown) {
     status,
     statusText: String(status),
     json: () => Promise.resolve(body),
+    text: () => Promise.resolve(JSON.stringify(body)),
   });
   global.fetch = fetchMock as unknown as typeof fetch;
   return fetchMock;
@@ -74,12 +75,23 @@ describe('Audit log page', () => {
         status: 200,
         json: () =>
           Promise.resolve({ entries: [entry('2', 'newer')], nextCursor: '2' }),
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ entries: [entry('2', 'newer')], nextCursor: '2' }),
+          ),
       })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: () =>
           Promise.resolve({ entries: [entry('1', 'older')], nextCursor: null }),
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              entries: [entry('1', 'older')],
+              nextCursor: null,
+            }),
+          ),
       });
     global.fetch = fetchMock as unknown as typeof fetch;
     render(<AuditLogPage />);

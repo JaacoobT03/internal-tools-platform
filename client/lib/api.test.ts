@@ -1,4 +1,4 @@
-import { ApiError, apiGet, apiUrl } from './api';
+import { ApiError, apiGet, apiPost, apiUrl } from './api';
 
 describe('apiUrl', () => {
   it('joins a path onto the API base URL', () => {
@@ -22,6 +22,7 @@ describe('apiGet', () => {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ok: 1 }),
+      text: () => Promise.resolve(JSON.stringify({ ok: 1 })),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
     await expect(apiGet('/auth/me', 'u-auditor')).resolves.toEqual({ ok: 1 });
@@ -30,6 +31,25 @@ describe('apiGet', () => {
       expect.objectContaining({ headers: { 'X-User-Id': 'u-auditor' } }),
     );
   });
+
+  it.each([
+    [204, ''],
+    [201, ''],
+  ])(
+    'resolves undefined for a %i response with no body',
+    async (status, body) => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status,
+        json: () =>
+          Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+        text: () => Promise.resolve(body),
+      }) as unknown as typeof fetch;
+      await expect(
+        apiPost('/things/1/cancel', undefined, 'u-requester'),
+      ).resolves.toBeUndefined();
+    },
+  );
 
   it('throws ApiError with the status on failure', async () => {
     global.fetch = jest.fn().mockResolvedValue({
@@ -41,5 +61,62 @@ describe('apiGet', () => {
     await expect(apiGet('/audit', 'u-viewer')).rejects.toEqual(
       new ApiError(403, 'Missing permission'),
     );
+  });
+});
+
+describe('apiPost', () => {
+  it('sends X-User-Id and a JSON body and returns JSON', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: () => Promise.resolve({ id: 'r1' }),
+      text: () => Promise.resolve(JSON.stringify({ id: 'r1' })),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await expect(
+      apiPost('/things', { amountCents: 100 }, 'u-requester'),
+    ).resolves.toEqual({ id: 'r1' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3001/things',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'X-User-Id': 'u-requester',
+          'Content-Type': 'application/json',
+        },
+        body: '{"amountCents":100}',
+      }),
+    );
+  });
+
+  it('sends no body or Content-Type when body is omitted', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve(JSON.stringify({})),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await apiPost('/things/1/approve', undefined, 'u-approver');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3001/things/1/approve',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-User-Id': 'u-approver' },
+        body: undefined,
+      }),
+    );
+  });
+
+  it('throws ApiError with the status on failure', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      json: () => Promise.resolve({ message: 'Already decided' }),
+    }) as unknown as typeof fetch;
+    await expect(
+      apiPost('/things/1/approve', undefined, 'u-approver'),
+    ).rejects.toEqual(new ApiError(409, 'Already decided'));
   });
 });
