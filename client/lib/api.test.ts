@@ -22,6 +22,7 @@ describe('apiGet', () => {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ok: 1 }),
+      text: () => Promise.resolve(JSON.stringify({ ok: 1 })),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
     await expect(apiGet('/auth/me', 'u-auditor')).resolves.toEqual({ ok: 1 });
@@ -30,6 +31,25 @@ describe('apiGet', () => {
       expect.objectContaining({ headers: { 'X-User-Id': 'u-auditor' } }),
     );
   });
+
+  it.each([
+    [204, ''],
+    [201, ''],
+  ])(
+    'resolves undefined for a %i response with no body',
+    async (status, body) => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status,
+        json: () =>
+          Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+        text: () => Promise.resolve(body),
+      }) as unknown as typeof fetch;
+      await expect(
+        apiPost('/things/1/cancel', undefined, 'u-requester'),
+      ).resolves.toBeUndefined();
+    },
+  );
 
   it('throws ApiError with the status on failure', async () => {
     global.fetch = jest.fn().mockResolvedValue({
@@ -50,6 +70,7 @@ describe('apiPost', () => {
       ok: true,
       status: 201,
       json: () => Promise.resolve({ id: 'r1' }),
+      text: () => Promise.resolve(JSON.stringify({ id: 'r1' })),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
     await expect(
@@ -73,6 +94,7 @@ describe('apiPost', () => {
       ok: true,
       status: 200,
       json: () => Promise.resolve({}),
+      text: () => Promise.resolve(JSON.stringify({})),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
     await apiPost('/things/1/approve', undefined, 'u-approver');

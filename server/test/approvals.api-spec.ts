@@ -292,6 +292,23 @@ describe('Two-person approvals (ADR 0004)', () => {
       .expect(400);
   });
 
+  it('refuses to approve or reject a request whose action is no longer registered', async () => {
+    const orphan = await prisma.approvalRequest.create({
+      data: {
+        actionName: 'test.removed',
+        payload: {},
+        requestedBy: 'u-requester',
+      },
+    });
+    await asUser(app, 'approver')
+      .post(`/approvals/${orphan.id}/reject`)
+      .expect(500);
+    await asUser(app, 'approver')
+      .post(`/approvals/${orphan.id}/approve`)
+      .expect(500);
+    expect(await status(orphan.id)).toBe('pending');
+  });
+
   it('refuses unknown action names and duplicate handler registration', async () => {
     await expect(
       approvals.submit(user('requester'), 'test.unknown', {}),

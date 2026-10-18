@@ -152,7 +152,9 @@ export class ApprovalsService {
         throw new ForbiddenException('You cannot decide your own request');
       }
       const handlers = this.handlers.get(request.actionName);
-      if (status === 'approved' && !handlers) {
+      // Refuse both decisions for an action no longer registered: rejecting
+      // without its onReject would leave the app's pending record behind.
+      if (!handlers) {
         throw new InternalServerErrorException(
           `No approval handler registered for "${request.actionName}"`,
         );

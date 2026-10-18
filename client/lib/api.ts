@@ -40,7 +40,12 @@ async function apiRequest<T>(
     }
     throw new ApiError(response.status, message);
   }
-  return (await response.json()) as T;
+  // No-content success (204/205, or an empty body): resolve with undefined.
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
+  }
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 /**
@@ -51,7 +56,10 @@ export function apiGet<T>(path: string, userId?: string | null): Promise<T> {
   return apiRequest<T>(path, userId, { method: 'GET' });
 }
 
-/** POST `body` (JSON, optional) to `path` as `userId`. See `apiGet`. */
+/**
+ * POST `body` (JSON, optional) to `path` as `userId`. See `apiGet`. Resolves
+ * with `undefined` when the response has no body.
+ */
 export function apiPost<T>(
   path: string,
   body?: unknown,
