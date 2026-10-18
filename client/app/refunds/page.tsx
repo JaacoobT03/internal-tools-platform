@@ -13,30 +13,37 @@ import {
 } from './format';
 import { useRefundsContext } from './use-refunds-context';
 
-type State =
-  | { kind: 'loading' }
-  | { kind: 'loaded'; refunds: Refund[] }
-  | { kind: 'error'; message: string };
+type Result =
+  { kind: 'loaded'; refunds: Refund[] } | { kind: 'error'; message: string };
 
 export default function RefundsPage() {
   const userId = useCurrentUserId();
   const { can, nameOf } = useRefundsContext(userId);
   const [status, setStatus] = useState<RefundStatus | ''>('');
-  const [state, setState] = useState<State>({ kind: 'loading' });
+  const [loaded, setLoaded] = useState<{ key: string; result: Result } | null>(
+    null,
+  );
+  // Show a result only for the user and filter that produced it.
+  const state: Result | { kind: 'loading' } =
+    loaded?.key === `${userId}:${status}` ? loaded.result : { kind: 'loading' };
 
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    const key = `${userId}:${status}`;
     const query = status ? `?status=${status}` : '';
     apiGet<Refund[]>(`/refunds${query}`, userId)
-      .then((refunds) => !cancelled && setState({ kind: 'loaded', refunds }))
+      .then(
+        (refunds) =>
+          !cancelled && setLoaded({ key, result: { kind: 'loaded', refunds } }),
+      )
       .catch((error: unknown) => {
         if (cancelled) return;
         const message =
           error instanceof ApiError
             ? `Refused (${error.status}): ${error.message}`
             : 'Could not load refunds.';
-        setState({ kind: 'error', message });
+        setLoaded({ key, result: { kind: 'error', message } });
       });
     return () => {
       cancelled = true;

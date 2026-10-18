@@ -25,7 +25,8 @@ export const CreateRefundSchema = z
       .trim()
       .min(1)
       .max(100)
-      .refine(noCardNumber, 'Must not contain a card number'),
+      .refine(noCardNumber, 'Must not contain a card number')
+      .refine(noPii, 'Must not contain an email address or card number'),
     customerEmail: z.email().max(254),
     cardLast4: z
       .string()

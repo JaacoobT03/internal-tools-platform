@@ -36,6 +36,11 @@ function RefundDetail() {
     userId: string | null;
     email: string;
   } | null>(null);
+  const [revealedFor, setRevealedFor] = useState(userId);
+  if (revealedFor !== userId) {
+    setRevealedFor(userId);
+    setRevealed(null);
+  }
   const email = revealed?.userId === userId ? revealed.email : null;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

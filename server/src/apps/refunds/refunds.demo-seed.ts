@@ -1,5 +1,15 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import type { AuthUser } from '../../platform/auth/platform-auth';
+import { MockPaymentsAdapter } from '../../platform/payments/mock-payments.adapter';
+import {
+  PAYMENTS_ADAPTER,
+  type PaymentsAdapter,
+} from '../../platform/payments/payments-adapter';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CreateRefund } from './refunds.schemas';
 import { RefundsService } from './refunds.service';
@@ -80,7 +90,7 @@ const DEMO: { by: AuthUser; refund: CreateRefund; rejectBy?: AuthUser }[] = [
 /**
  * Seeds example refunds into an empty table for local development, through
  * the normal service path (paid via the mock adapter, audited). Never runs
- * under tests or in production.
+ * under tests, in production, or with a real payments adapter.
  */
 @Injectable()
 export class RefundsDemoSeed implements OnApplicationBootstrap {
@@ -89,11 +99,13 @@ export class RefundsDemoSeed implements OnApplicationBootstrap {
   constructor(
     private readonly prisma: PrismaService,
     private readonly refunds: RefundsService,
+    @Inject(PAYMENTS_ADAPTER) private readonly payments: PaymentsAdapter,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     const env = process.env.NODE_ENV;
     if (env === 'test' || env === 'production') return;
+    if (!(this.payments instanceof MockPaymentsAdapter)) return;
     if ((await this.prisma.refund.count()) > 0) return;
     for (const { by, refund, rejectBy } of DEMO) {
       const created = await this.refunds.create(by, refund);
