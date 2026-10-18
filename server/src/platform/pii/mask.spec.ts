@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { findUnmaskedPii, maskCard, maskEmail, maskPiiDeep } from './mask';
+
+// Its digits contain `9-9501-4319-8403`, a Luhn-valid 13-digit run.
+const LUHN_UUID = 'c980d5b9-9501-4319-8403-fed366253389';
 
 describe('maskEmail', () => {
   it.each([
@@ -50,6 +54,27 @@ describe('findUnmaskedPii', () => {
         order: '1234567890123',
       }),
     ).toEqual([]);
+  });
+  it('ignores Luhn-valid digit runs inside UUIDs', () => {
+    expect(
+      findUnmaskedPii({
+        id: LUHN_UUID,
+        payoutId: `mock_re_${LUHN_UUID}`,
+        upper: LUHN_UUID.toUpperCase(),
+        [LUHN_UUID]: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it('never flags random UUIDs', () => {
+    const ids = Array.from({ length: 20000 }, () => randomUUID());
+    expect(findUnmaskedPii(ids)).toEqual([]);
+  });
+
+  it('still finds a card number next to a UUID', () => {
+    expect(findUnmaskedPii(`${LUHN_UUID} 4242 4242 4242 4242`)).toEqual([
+      { kind: 'card', masked: '**** **** **** 4242' },
+    ]);
   });
 });
 
@@ -109,6 +134,26 @@ describe('maskPiiDeep', () => {
     );
     expect(JSON.stringify(maskPiiDeep(snapshot))).toBe(
       '{"__proto__":{"email":"j***@example.com"},"id":1}',
+    );
+  });
+  it('leaves UUIDs in values and keys unchanged', () => {
+    const snapshot = {
+      entityId: LUHN_UUID,
+      after: { id: LUHN_UUID, payoutId: `mock_re_${LUHN_UUID}` },
+      byId: { [LUHN_UUID]: 1 },
+    };
+    expect(maskPiiDeep(snapshot)).toEqual(snapshot);
+  });
+
+  it('masks a card number next to a UUID but keeps the UUID', () => {
+    expect(maskPiiDeep(`${LUHN_UUID} 4242 4242 4242 4242`)).toBe(
+      `${LUHN_UUID} **** **** **** 4242`,
+    );
+  });
+
+  it('masks a card whose digits also appear inside a UUID', () => {
+    expect(maskPiiDeep(`${LUHN_UUID} card 9-9501-4319-8403`)).toBe(
+      `${LUHN_UUID} card **** **** **** 8403`,
     );
   });
 });
