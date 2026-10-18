@@ -395,10 +395,10 @@ describe('Refunds app (.agents/specs/refunds.md)', () => {
       ]);
       expect(entries[0].after).toMatchObject({ status: 'pending_approval' });
       expect(entries[1].before).toMatchObject({ status: 'pending_approval' });
-      expect(entries[1].after).toMatchObject({
-        status: 'paid',
-        payoutId: expect.stringMatching(/^mock_re_/) as unknown as string,
-      });
+      expect(entries[1].after).toMatchObject({ status: 'paid' });
+      expect((entries[1].after as { payoutId: string }).payoutId).toMatch(
+        /^mock_re_/,
+      );
       const approvalActions = (
         await prisma.auditEntry.findMany({
           where: { entityId: refund.approvalRequestId as string },

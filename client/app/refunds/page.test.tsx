@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { setCurrentUserId } from '../../lib/session';
 import RefundsPage from './page';
 import { mockApi, refund, session, users } from './test-utils';
@@ -40,7 +46,7 @@ describe('Refunds list', () => {
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'paid' },
     });
-    expect(await screen.findAllByRole('row')).toHaveLength(2);
+    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2));
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:3001/refunds?status=paid',
       expect.anything(),
