@@ -34,10 +34,18 @@ describe('Mock auth (ADR 0001)', () => {
 
   it('resolves the current user and permissions from X-User-Id', async () => {
     const response = await asUser(app, 'auditor').get('/auth/me').expect(200);
-    expect(response.body).toEqual({
-      user: { id: 'u-auditor', name: 'Aud Auditor', roles: ['auditor'] },
-      permissions: ['platform.audit.read', 'platform.session.read'],
+    const body = response.body as { user: unknown; permissions: string[] };
+    expect(body.user).toEqual({
+      id: 'u-auditor',
+      name: 'Aud Auditor',
+      roles: ['auditor'],
     });
+    // Apps may grant the auditor their own permissions; check only the platform's.
+    expect(
+      body.permissions.filter((permission) =>
+        permission.startsWith('platform.'),
+      ),
+    ).toEqual(['platform.audit.read', 'platform.session.read']);
   });
 
   it('rejects an unknown user id with 401', async () => {
