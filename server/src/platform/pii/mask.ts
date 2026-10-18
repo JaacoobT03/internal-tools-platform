@@ -1,6 +1,9 @@
 const EMAIL_PATTERN =
   /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
 const CARD_CANDIDATE_PATTERN = /(?<![\d*])\d(?:[ -]?\d){12,18}(?![\d*])/g;
+// Random UUIDs often contain Luhn-valid digit runs; they are ids, not cards.
+const UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
 /** `jane.doe@example.com` → `j***@example.com` (ADR 0005). */
 export function maskEmail(email: string): string {
@@ -29,10 +32,18 @@ function passesLuhn(digits: string): boolean {
   return sum % 10 === 0;
 }
 
-function cardNumbersIn(text: string): string[] {
-  return [...text.matchAll(CARD_CANDIDATE_PATTERN)]
-    .map((match) => match[0])
-    .filter((candidate) => passesLuhn(candidate.replace(/\D/g, '')));
+interface CardMatch {
+  index: number;
+  card: string;
+}
+
+function cardMatchesIn(text: string): CardMatch[] {
+  const withoutUuids = text.replace(UUID_PATTERN, (uuid) =>
+    'x'.repeat(uuid.length),
+  );
+  return [...withoutUuids.matchAll(CARD_CANDIDATE_PATTERN)]
+    .map((match) => ({ index: match.index, card: match[0] }))
+    .filter(({ card }) => passesLuhn(card.replace(/\D/g, '')));
 }
 
 export interface UnmaskedPii {
@@ -48,7 +59,7 @@ export function findUnmaskedPii(value: unknown): UnmaskedPii[] {
     for (const match of text.matchAll(EMAIL_PATTERN)) {
       found.push({ kind: 'email', masked: maskEmail(match[0]) });
     }
-    for (const card of cardNumbersIn(text)) {
+    for (const { card } of cardMatchesIn(text)) {
       found.push({ kind: 'card', masked: maskCard(card) });
     }
     return text;
@@ -60,8 +71,11 @@ export function findUnmaskedPii(value: unknown): UnmaskedPii[] {
 export function maskPiiDeep<T>(value: T): T {
   return walkStrings(value, (text) => {
     let masked = text.replace(EMAIL_PATTERN, maskEmail);
-    for (const card of cardNumbersIn(masked)) {
-      masked = masked.replace(card, maskCard(card));
+    for (const { index, card } of cardMatchesIn(masked).reverse()) {
+      masked =
+        masked.slice(0, index) +
+        maskCard(card) +
+        masked.slice(index + card.length);
     }
     return masked;
   });

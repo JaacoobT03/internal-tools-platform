@@ -2,7 +2,7 @@
 
 A governance-first platform for internal tools, intended to replace low-code tools such as Microsoft Power Apps with small custom apps on one shared platform. The platform provides auth, permissions, audit logging, approvals and PII masking; each app lives in its own folder and only builds on the platform.
 
-The platform security layer is in place; no business apps exist yet. Rules for contributors (human or agent) are in [AGENTS.md](AGENTS.md); decisions are in [.agents/decisions/](.agents/decisions/).
+The platform security layer is in place, with one business app on top: refunds (`server/src/apps/refunds/`, `client/app/refunds/`, spec in [.agents/specs/refunds.md](.agents/specs/refunds.md)). Rules for contributors (human or agent) are in [AGENTS.md](AGENTS.md); decisions are in [.agents/decisions/](.agents/decisions/).
 
 ## Layout
 
@@ -37,6 +37,27 @@ pnpm dev               # same as docker compose up --build
 Use the "Acting as" switcher in the page header to pick a seed user (mock login). The audit log at http://localhost:3000/audit works for the auditor and shows a refusal for every other role.
 
 The server applies migrations on startup. Source folders are mounted into the containers, so edits hot-reload.
+
+## Demo
+
+Start the stack (`docker compose up --build`), open http://localhost:3000 and pick a user in the "Acting as" switcher. The mock login has five seed users:
+
+| User           | Id                     | Roles               |
+| -------------- | ---------------------- | ------------------- |
+| Rita Requester | `u-requester`          | requester           |
+| Arne Approver  | `u-approver`           | approver            |
+| Bea Both       | `u-requester-approver` | requester, approver |
+| Aud Auditor    | `u-auditor`            | auditor             |
+| Vic Viewer     | `u-viewer`             | viewer              |
+
+In local development the refunds app seeds five example refunds into an empty table (three paid, one pending approval, one rejected). Refunds walkthrough:
+
+1. **Paid up to EUR 500.00:** as Rita, open Refunds → "New refund" and enter EUR 500.00 or less. It is paid at once through the payments adapter and shows "paid".
+2. **Pending above EUR 500.00:** as Bea, create a refund above EUR 500.00. It shows "pending approval" and nothing is paid.
+3. **Self-approval refused:** still as Bea, open that refund. Approving or rejecting your own refund is refused (403).
+4. **Approver pays:** as Arne, open the pending refund and click "Approve". It is paid out once and shows "paid" ("Reject" sets "rejected" and pays nothing).
+5. **Reveal is audited:** as Arne, click "Reveal email" to see the full customer email; everyone else only sees it masked, and a viewer cannot create, approve or reveal.
+6. **Auditor sees everything:** as Aud, open the Audit log: every creation, approval request, decision, payout and email reveal above is listed, with emails masked.
 
 ## Test it
 
@@ -75,3 +96,13 @@ CI (`.github/workflows/ci.yml`, job `ci`) runs install, lint, build, unit tests 
 - **Monitoring** and alerting.
 - **Refund payouts that survive a rollback.** The refunds app pays through the adapter inside its database transaction. If the payout succeeds and the transaction then rolls back, the payout cannot be undone and the refund is not recorded as paid (a retry is safe because the refund id is the idempotency key, but nothing retries automatically). The real fix is to record the payout intent first (commit a pending-payout state), then call the provider with the refund id as idempotency key and retry safely until the result is recorded.
 - **Separate database role for the audit table.** The app currently connects as the owner of `audit_entry`, so it could still drop or disable the append-only trigger. The real fix is a separate database role for the application with only INSERT and SELECT on the audit table, with migrations run by a different owner role.
+
+## How this was built
+
+- [#1](https://github.com/JaacoobT03/internal-tools-platform/pull/1) Governance harness: AGENTS.md, ADRs, spec template, new-app skill, CODEOWNERS, CI.
+- [#2](https://github.com/JaacoobT03/internal-tools-platform/pull/2) Platform skeleton: NestJS server, Next.js client, Docker Compose, real CI and boundary lint.
+- [#3](https://github.com/JaacoobT03/internal-tools-platform/pull/3) Platform security foundation: mock auth, deny-by-default permissions, append-only audit, approvals, PII masking, money/payments, input validation, test tripwires.
+- [#4](https://github.com/JaacoobT03/internal-tools-platform/pull/4) Platform additions for apps: `apiPost`, approval reject hook, `submit()` inside the app's transaction, app API test location.
+- [#5](https://github.com/JaacoobT03/internal-tools-platform/pull/5) Refunds app: create, two-person approval above EUR 500.00, masked email with audited reveal, local demo seed.
+- [#6](https://github.com/JaacoobT03/internal-tools-platform/pull/6) Auth test checks only the platform's own auditor permissions, so apps can add theirs; refund payout limit in Next steps.
+- [#7](https://github.com/JaacoobT03/internal-tools-platform/pull/7) PII check no longer mistakes digits inside UUIDs for card numbers; this Demo section and history.
