@@ -1,0 +1,32 @@
+// Refunds app models (.agents/specs/refunds.md).
+
+enum RefundStatus {
+  pending_approval
+  paid
+  rejected
+
+  @@map("refund_status")
+}
+
+/// A customer refund. Only the card's last 4 digits are ever stored.
+/// Migration 20261018130000_refunds adds a partial unique index: at most one
+/// pending_approval or paid refund per payment reference.
+model Refund {
+  id                String       @id @db.Uuid
+  paymentReference  String       @map("payment_reference")
+  customerEmail     String       @map("customer_email")
+  cardLast4         String       @map("card_last4") @db.Char(4)
+  amountCents       Int          @map("amount_cents")
+  currency          String       @default("EUR") @db.Char(3)
+  reason            String
+  status            RefundStatus
+  requestedBy       String       @map("requested_by")
+  approvalRequestId String?      @map("approval_request_id") @db.Uuid
+  payoutId          String?      @map("payout_id")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([status])
+  @@index([paymentReference])
+  @@map("refund")
+}

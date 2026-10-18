@@ -24,7 +24,13 @@ export const platformPages: readonly RegistryEntry[] = [
  * Apps under client/app/<name>/. An app PR may add exactly one entry here
  * (AGENTS.md rule 7, ADR 0007).
  */
-export const apps: readonly RegistryEntry[] = [];
+export const apps: readonly RegistryEntry[] = [
+  {
+    name: 'Refunds',
+    path: '/refunds',
+    requiredPermission: 'refunds.refund.read',
+  },
+];
 
 export const registry: readonly RegistryEntry[] = [...platformPages, ...apps];
 
