@@ -1,15 +1,32 @@
 # Default owner until other owners exist.
-*                     @JaacoobT03
+*                               @JaacoobT03
 
 # Harness and governance
-/AGENTS.md            @JaacoobT03
-/.agents/             @JaacoobT03
-/.github/             @JaacoobT03
-/CODEOWNERS           @JaacoobT03
+/AGENTS.md                      @JaacoobT03
+/.agents/                       @JaacoobT03
+/.github/                       @JaacoobT03
+/CODEOWNERS                     @JaacoobT03
+/tools/                         @JaacoobT03
 
 # Platform code
-/server/src/platform/ @JaacoobT03
-/client/lib/          @JaacoobT03
+/server/src/platform/           @JaacoobT03
+/client/lib/                    @JaacoobT03
 
-# Infrastructure (future)
-/docker-compose*.yml  @JaacoobT03
+# App-touchable platform locations (ADR 0007): an app PR may add its own
+# server/prisma/schema/<app>.prisma, its migrations and one module line in
+# app.module.ts. The platform owner reviews those changes.
+/server/prisma/                 @JaacoobT03
+/server/src/app.module.ts       @JaacoobT03
+/server/src/main.ts             @JaacoobT03
+
+# Workspace, tooling and infrastructure
+/package.json                   @JaacoobT03
+/pnpm-workspace.yaml            @JaacoobT03
+/pnpm-lock.yaml                 @JaacoobT03
+/eslint.config.mjs              @JaacoobT03
+/jest.config.js                 @JaacoobT03
+/compose.yaml                   @JaacoobT03
+/docker/                        @JaacoobT03
+/docker-compose*.yml            @JaacoobT03
+/server/package.json            @JaacoobT03
+/client/package.json            @JaacoobT03

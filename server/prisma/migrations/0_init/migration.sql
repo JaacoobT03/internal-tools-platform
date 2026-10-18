@@ -1,0 +1,1 @@
+-- Baseline migration. Intentionally empty: no platform or app models exist yet.

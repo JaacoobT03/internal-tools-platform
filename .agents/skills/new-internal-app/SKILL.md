@@ -20,7 +20,7 @@ Follow these steps in order. Read `AGENTS.md` first; its critical rules apply th
 
 1. Create `server/src/apps/<name>/` and `client/app/<name>/`.
 2. Import only from platform (`server/src/platform/`, `client/lib/`). Never import from another app.
-3. Do not modify platform or harness files in this PR. If the platform is missing something, open a separate platform PR.
+3. Do not modify platform or harness files in this PR. If the platform is missing something, open a separate platform PR. Only exceptions (reviewed by the platform owner via CODEOWNERS): put the app's Prisma models in `server/prisma/schema/<name>.prisma`, add its migrations under `server/prisma/migrations/`, and register its module with one line in `server/src/app.module.ts`.
 
 ## 3. Write failing tests first
 

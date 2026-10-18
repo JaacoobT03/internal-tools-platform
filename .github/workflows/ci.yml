@@ -8,36 +8,42 @@ permissions:
   contents: read
 
 jobs:
+  # Job name `ci` is the required status check in the ruleset protect-main. Do not rename.
   ci:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: platform
+          POSTGRES_PASSWORD: platform
+          POSTGRES_DB: platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U platform -d platform_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql://platform:platform@localhost:5432/platform_test
+      TEST_DATABASE_URL: postgresql://platform:platform@localhost:5432/platform_test
     steps:
-      - name: Placeholder
-        run: echo "harness only, no code yet"
-
-      # uncomment when code lands
-      # - uses: actions/checkout@v4
-      #
-      # - uses: pnpm/action-setup@v4
-      #
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: 22
-      #     cache: pnpm
-      #
-      # - name: Install
-      #   run: pnpm install --frozen-lockfile   # or: npm ci
-      #
-      # - name: Lint (server)
-      #   run: pnpm --dir server lint
-      # - name: Lint (client)
-      #   run: pnpm --dir client lint
-      #
-      # - name: Build (server)
-      #   run: pnpm --dir server build
-      # - name: Build (client)
-      #   run: pnpm --dir client build
-      #
-      # - name: Test (server)
-      #   run: pnpm --dir server test
-      # - name: Test (client)
-      #   run: pnpm --dir client test
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Prisma generate
+        run: pnpm --filter server prisma:generate
+      - name: Lint
+        run: pnpm lint
+      - name: Build
+        run: pnpm build
+      - name: Unit tests
+        run: pnpm test
+      - name: API tests
+        run: pnpm test:api

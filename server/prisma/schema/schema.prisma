@@ -1,0 +1,12 @@
+// Platform schema entry point. Each app adds its own models in
+// prisma/schema/<app>.prisma (see ADR 0007).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../../src/platform/prisma/generated"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
