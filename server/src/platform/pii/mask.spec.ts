@@ -78,4 +78,37 @@ describe('maskPiiDeep', () => {
     });
     expect(findUnmaskedPii(masked)).toEqual([]);
   });
+
+  it.each([
+    [{ 'jane@example.com': 1, 'j***@example.com': 2 }],
+    [{ 'j***@example.com': 2, 'jane@example.com': 1 }],
+  ])('keeps an already-masked key and the masked email key (%j)', (input) => {
+    expect(maskPiiDeep(input)).toEqual({
+      'j***@example.com': 2,
+      'j***@example.com (2)': 1,
+    });
+  });
+
+  it('does not reuse a suffix that exists as an original key', () => {
+    expect(
+      maskPiiDeep({
+        'jane@example.com': 1,
+        'j***@example.com': 2,
+        'j***@example.com (2)': 3,
+      }),
+    ).toEqual({
+      'j***@example.com': 2,
+      'j***@example.com (2)': 3,
+      'j***@example.com (3)': 1,
+    });
+  });
+
+  it('keeps an own __proto__ key from a JSON snapshot', () => {
+    const snapshot: unknown = JSON.parse(
+      '{"__proto__":{"email":"jane@example.com"},"id":1}',
+    );
+    expect(JSON.stringify(maskPiiDeep(snapshot))).toBe(
+      '{"__proto__":{"email":"j***@example.com"},"id":1}',
+    );
+  });
 });

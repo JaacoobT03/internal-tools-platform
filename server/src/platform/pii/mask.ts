@@ -75,14 +75,25 @@ function walkStrings<T>(value: T, visit: (text: string) => string): T {
   }
   if (value !== null && typeof value === 'object') {
     if (Object.getPrototypeOf(value) !== Object.prototype) return value;
+    const fields = Object.entries(value).map(
+      ([key, item]) => [key, visit(key), item] as const,
+    );
+    // Masked keys must not overwrite unchanged keys or each other.
+    const taken = new Set(fields.filter(([k, m]) => k === m).map(([k]) => k));
     const result: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      let newKey = visit(key);
-      // Two keys that mask to the same text must not overwrite each other.
-      for (let n = 2; newKey !== key && newKey in result; n++) {
-        newKey = `${visit(key)} (${n})`;
+    for (const [key, masked, item] of fields) {
+      let newKey = masked;
+      if (masked !== key) {
+        for (let n = 2; taken.has(newKey); n++) newKey = `${masked} (${n})`;
+        taken.add(newKey);
       }
-      result[newKey] = walkStrings(item, visit);
+      // defineProperty keeps keys like `__proto__` as own data properties.
+      Object.defineProperty(result, newKey, {
+        value: walkStrings(item, visit),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     return result as T;
   }
