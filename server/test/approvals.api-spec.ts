@@ -22,6 +22,7 @@ describe('Two-person approvals (ADR 0004)', () => {
   let prisma: PrismaService;
   let approvals: ApprovalsService;
   const effectRuns = new Map<string, number>();
+  const rejectRuns = new Map<string, number>();
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -55,6 +56,41 @@ describe('Two-person approvals (ADR 0004)', () => {
         throw new Error('effect failed');
       },
     );
+    approvals.registerHandler('test.with-reject', {
+      onApprove: async ({ tx, payload, approver }) => {
+        const { ref } = payload as { ref: string };
+        effectRuns.set(ref, (effectRuns.get(ref) ?? 0) + 1);
+        await audit.record(tx, {
+          actor: approver.id,
+          entity: 'test.Effect',
+          entityId: ref,
+          action: 'approve-effect',
+        });
+      },
+      onReject: async ({ tx, payload, approver }) => {
+        const { ref } = payload as { ref: string };
+        rejectRuns.set(ref, (rejectRuns.get(ref) ?? 0) + 1);
+        await audit.record(tx, {
+          actor: approver.id,
+          entity: 'test.Effect',
+          entityId: ref,
+          action: 'reject-effect',
+        });
+      },
+    });
+    approvals.registerHandler('test.failing-reject', {
+      onApprove: () => Promise.resolve(),
+      onReject: async ({ tx, payload, approver }) => {
+        const { ref } = payload as { ref: string };
+        await audit.record(tx, {
+          actor: approver.id,
+          entity: 'test.Effect',
+          entityId: ref,
+          action: 'reject-effect',
+        });
+        throw new Error('reject effect failed');
+      },
+    });
   });
   afterAll(() => app.close());
   beforeEach(() => resetSeed());
@@ -186,6 +222,64 @@ describe('Two-person approvals (ADR 0004)', () => {
     expect(await approvalActions(id)).toEqual([
       ['approval.requested', 'u-requester'],
       ['approval.rejected', 'u-approver'],
+    ]);
+  });
+
+  it('runs onReject once, in the rejection transaction, and never onApprove', async () => {
+    const { id, ref } = await submit('requester', 'test.with-reject');
+    await asUser(app, 'approver').post(`/approvals/${id}/reject`).expect(200);
+    await asUser(app, 'requesterApprover')
+      .post(`/approvals/${id}/reject`)
+      .expect(409);
+    expect(rejectRuns.get(ref)).toBe(1);
+    expect(effectRuns.get(ref)).toBeUndefined();
+    expect(await effectEntries(ref)).toBe(1);
+    expect(await status(id)).toBe('rejected');
+  });
+
+  it('runs onApprove (not onReject) for a handler registered with both', async () => {
+    const { id, ref } = await submit('requester', 'test.with-reject');
+    await asUser(app, 'approver').post(`/approvals/${id}/approve`).expect(200);
+    expect(effectRuns.get(ref)).toBe(1);
+    expect(rejectRuns.get(ref)).toBeUndefined();
+  });
+
+  it('a failing onReject rolls back the rejection and every audit entry', async () => {
+    const { id, ref } = await submit('requester', 'test.failing-reject');
+    await asUser(app, 'approver').post(`/approvals/${id}/reject`).expect(500);
+    expect(await status(id)).toBe('pending');
+    expect(await effectEntries(ref)).toBe(0);
+    expect(await approvalActions(id)).toEqual([
+      ['approval.requested', 'u-requester'],
+    ]);
+  });
+
+  it('submit(tx) joins the caller transaction and rolls back with it', async () => {
+    const ref = randomUUID();
+    let id = '';
+    await expect(
+      prisma.$transaction(async (tx) => {
+        ({ id } = await approvals.submit(
+          user('requester'),
+          'test.effect',
+          { ref },
+          tx,
+        ));
+        throw new Error('caller failed');
+      }),
+    ).rejects.toThrow('caller failed');
+    expect(id).not.toBe('');
+    expect(
+      await prisma.approvalRequest.findUnique({ where: { id } }),
+    ).toBeNull();
+    expect(await approvalActions(id)).toEqual([]);
+
+    const committed = await prisma.$transaction((tx) =>
+      approvals.submit(user('requester'), 'test.effect', { ref }, tx),
+    );
+    expect(await status(committed.id)).toBe('pending');
+    expect(await approvalActions(committed.id)).toEqual([
+      ['approval.requested', 'u-requester'],
     ]);
   });
 

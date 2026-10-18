@@ -137,7 +137,7 @@ Every app with approvals or personal data must include tests proving:
 - (b) an action above the threshold has no effect until a second person with the approver role approves it;
 - (c) API responses never contain unmasked email or card numbers unless the reveal endpoint is used, and every reveal creates an audit entry.
 
-Write API tests with `createTestApp()`, `asUser()` and `resetSeed()` from `server/test/helpers/` (see `server/test/README.md`). The `asUser` tripwires then fail any test whose response leaks unmasked PII or whose successful mutation writes no audit entry.
+Write API tests in `server/src/apps/<name>/test/<name>.api-spec.ts` with `createTestApp()`, `asUser()` and `resetSeed()` from `server/test/helpers/` (see `server/test/README.md`). The `asUser` tripwires then fail any test whose response leaks unmasked PII or whose successful mutation writes no audit entry.
 
 ## Written-only rules
 

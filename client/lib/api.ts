@@ -17,16 +17,17 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * GET `path` from the platform API as `userId`. The X-User-Id header is the
- * mock-auth contract (ADR 0001); real SSO replaces it without touching apps.
- */
-export async function apiGet<T>(
+async function apiRequest<T>(
   path: string,
-  userId?: string | null,
+  userId: string | null | undefined,
+  init: { method: 'GET' | 'POST'; body?: unknown },
 ): Promise<T> {
+  const headers: Record<string, string> = userId ? { 'X-User-Id': userId } : {};
+  if (init.body !== undefined) headers['Content-Type'] = 'application/json';
   const response = await fetch(apiUrl(path), {
-    headers: userId ? { 'X-User-Id': userId } : {},
+    method: init.method,
+    headers,
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -40,4 +41,21 @@ export async function apiGet<T>(
     throw new ApiError(response.status, message);
   }
   return (await response.json()) as T;
+}
+
+/**
+ * GET `path` from the platform API as `userId`. The X-User-Id header is the
+ * mock-auth contract (ADR 0001); real SSO replaces it without touching apps.
+ */
+export function apiGet<T>(path: string, userId?: string | null): Promise<T> {
+  return apiRequest<T>(path, userId, { method: 'GET' });
+}
+
+/** POST `body` (JSON, optional) to `path` as `userId`. See `apiGet`. */
+export function apiPost<T>(
+  path: string,
+  body?: unknown,
+  userId?: string | null,
+): Promise<T> {
+  return apiRequest<T>(path, userId, { method: 'POST', body });
 }
