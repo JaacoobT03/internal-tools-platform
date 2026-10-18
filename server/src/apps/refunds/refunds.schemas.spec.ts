@@ -24,6 +24,7 @@ describe('CreateRefundSchema', () => {
     ['card in reason', { reason: 'paid with 4000-0000-0000-0002' }],
     ['digits in reference', { paymentReference: '123456789012' }],
     ['email in reason', { reason: 'see bob@example.com' }],
+    ['email in reference', { paymentReference: 'bob@example.com' }],
   ])('rejects %s', (_label, overrides) => {
     expect(
       CreateRefundSchema.safeParse({ ...valid, ...overrides }).success,

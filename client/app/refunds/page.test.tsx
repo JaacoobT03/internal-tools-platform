@@ -46,6 +46,7 @@ describe('Refunds list', () => {
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'paid' },
     });
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2));
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:3001/refunds?status=paid',

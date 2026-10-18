@@ -136,6 +136,7 @@ describe('Refunds app (.agents/specs/refunds.md)', () => {
       ['a card number in the reason', { reason: 'card 4242 4242 4242 4242' }],
       ['a card number as reference', { paymentReference: '4242424242424242' }],
       ['an email in the reason', { reason: 'customer bob@example.com' }],
+      ['an email as reference', { paymentReference: 'bob@example.com' }],
       ['an invalid email', { customerEmail: 'not-an-email' }],
       ['an empty reason', { reason: '' }],
       ['a missing reference', { paymentReference: undefined }],

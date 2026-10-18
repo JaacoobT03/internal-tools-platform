@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { setCurrentUserId } from '../../../lib/session';
 import RefundDetailPage from './page';
 import { mockApi, refund, session, users } from '../test-utils';
@@ -49,6 +49,31 @@ describe('Refund detail', () => {
       await screen.findByRole('button', { name: 'Reveal email' }),
     );
     expect(await screen.findByText('jane.doe@example.com')).toBeInTheDocument();
+  });
+
+  it('clears a revealed email when the user changes', async () => {
+    setCurrentUserId('u-approver');
+    mockApi({
+      'GET /auth/users': { body: users },
+      'GET /auth/me': { body: session('u-approver', APPROVER) },
+      [`GET /refunds/${ID}`]: { body: refund({ status: 'paid' }) },
+      [`POST /refunds/${ID}/reveal-email`]: {
+        body: { customerEmail: 'jane.doe@example.com' },
+      },
+    });
+    render(<RefundDetailPage />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Reveal email' }),
+    );
+    expect(await screen.findByText('jane.doe@example.com')).toBeInTheDocument();
+
+    act(() => setCurrentUserId('u-viewer'));
+    act(() => setCurrentUserId('u-approver'));
+    expect(screen.queryByText('jane.doe@example.com')).toBeNull();
+    expect(
+      await screen.findByRole('button', { name: 'Reveal email' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('jane.doe@example.com')).toBeNull();
   });
 
   it('shows the 403 when the requester tries to approve their own refund', async () => {
