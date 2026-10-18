@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint';
 // AGENTS.md rule 6 / ADR 0007: apps may import platform, never another app;
 // platform never imports apps. Proven by tools/eslint-boundaries.test.cjs.
 const boundaryRules = {
-  files: ['**/*.{ts,tsx}'],
+  files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
   plugins: { boundaries },
   settings: {
     'import/resolver': {
@@ -22,6 +22,12 @@ const boundaryRules = {
       node: true,
     },
     'boundaries/legacy-templates': false,
+    'boundaries/dependency-nodes': [
+      'import',
+      'export',
+      'dynamic-import',
+      'require',
+    ],
     'boundaries/elements': [
       { type: 'server-app', pattern: 'server/src/apps/*', capture: ['app'] },
       { type: 'server-platform', pattern: 'server/src/platform' },

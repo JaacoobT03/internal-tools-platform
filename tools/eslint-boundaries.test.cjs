@@ -34,6 +34,15 @@ describe('ESLint boundary rules', () => {
     'server/src/platform/bad-imports-app.ts',
     'client/app/alpha/bad-imports-other-app.ts',
     'client/lib/bad-imports-app.ts',
+    'server/src/apps/alpha/bad-imports-other-app.js',
+    'server/src/apps/alpha/bad-requires-other-app.cjs',
+    'server/src/platform/bad-imports-app.mjs',
+    'client/app/alpha/bad-imports-other-app.js',
+    'client/app/alpha/bad-imports-other-app.jsx',
+    'client/app/alpha/bad-imports-other-app.mjs',
+    'client/app/alpha/bad-requires-other-app.cjs',
+    'client/app/alpha/bad-dynamic-import-other-app.js',
+    'client/lib/bad-imports-app.js',
   ])('rejects %s', (file) => {
     expect(violations[file]).toHaveLength(1);
   });
@@ -44,6 +53,8 @@ describe('ESLint boundary rules', () => {
     'server/src/platform/util.ts',
     'client/app/alpha/ok-imports.ts',
     'client/lib/util.ts',
+    'server/src/apps/alpha/ok-imports.js',
+    'client/app/alpha/ok-imports.jsx',
   ])('allows %s', (file) => {
     expect(violations[file]).toEqual([]);
   });

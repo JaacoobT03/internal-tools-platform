@@ -16,12 +16,18 @@ No business apps exist yet. Rules for contributors (human or agent) are in [AGEN
 
 ## Run it
 
-Requirements: Docker with Compose, Node 24 (`.nvmrc`) and pnpm (`corepack enable`).
+Just running the app needs only Docker with Compose:
+
+```sh
+docker compose up --build
+```
+
+Node 24 (`.nvmrc`) and pnpm (`corepack enable`) are only needed for development and tests:
 
 ```sh
 pnpm install
 cp .env.example .env   # optional; the defaults are local-only
-pnpm dev               # docker compose up --build
+pnpm dev               # same as docker compose up --build
 ```
 
 - Client: http://localhost:3000
