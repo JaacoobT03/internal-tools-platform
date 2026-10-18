@@ -73,4 +73,5 @@ CI (`.github/workflows/ci.yml`, job `ci`) runs install, lint, build, unit tests 
 - **Rate limiting** on the API.
 - **Production deployment** (no production configuration exists yet; mocks refuse to start in production).
 - **Monitoring** and alerting.
+- **Refund payouts that survive a rollback.** The refunds app pays through the adapter inside its database transaction. If the payout succeeds and the transaction then rolls back, the payout cannot be undone and the refund is not recorded as paid (a retry is safe because the refund id is the idempotency key, but nothing retries automatically). The real fix is to record the payout intent first (commit a pending-payout state), then call the provider with the refund id as idempotency key and retry safely until the result is recorded.
 - **Separate database role for the audit table.** The app currently connects as the owner of `audit_entry`, so it could still drop or disable the append-only trigger. The real fix is a separate database role for the application with only INSERT and SELECT on the audit table, with migrations run by a different owner role.

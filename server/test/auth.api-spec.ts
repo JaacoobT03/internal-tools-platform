@@ -40,10 +40,12 @@ describe('Mock auth (ADR 0001)', () => {
       name: 'Aud Auditor',
       roles: ['auditor'],
     });
-    // Apps may grant the auditor more permissions; only require the platform's.
-    expect(body.permissions).toEqual(
-      expect.arrayContaining(['platform.audit.read', 'platform.session.read']),
-    );
+    // Apps may grant the auditor their own permissions; check only the platform's.
+    expect(
+      body.permissions.filter((permission) =>
+        permission.startsWith('platform.'),
+      ),
+    ).toEqual(['platform.audit.read', 'platform.session.read']);
   });
 
   it('rejects an unknown user id with 401', async () => {
