@@ -1,0 +1,61 @@
+name: internal-tools-platform
+
+x-db-env: &db-env
+  POSTGRES_USER: ${POSTGRES_USER:-platform}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-platform}
+  POSTGRES_DB: ${POSTGRES_DB:-platform}
+
+services:
+  postgres:
+    image: postgres:16
+    environment: *db-env
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  server:
+    build:
+      context: .
+      dockerfile: docker/dev.Dockerfile
+    command: pnpm --filter server dev
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-platform}:${POSTGRES_PASSWORD:-platform}@postgres:5432/${POSTGRES_DB:-platform}
+      PORT: 3001
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:3000}
+    ports:
+      - '${SERVER_PORT:-3001}:3001'
+    volumes:
+      - ./server/src:/repo/server/src
+      - ./server/prisma:/repo/server/prisma
+      # Keep the container's generated Prisma client out of the host checkout.
+      - /repo/server/src/platform/prisma/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/dev.Dockerfile
+    command: pnpm --filter client dev --hostname 0.0.0.0 --port 3000
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      WATCHPACK_POLLING: 'true'
+    ports:
+      - '${CLIENT_PORT:-3000}:3000'
+    volumes:
+      - ./client/app:/repo/client/app
+      - ./client/lib:/repo/client/lib
+      - ./client/public:/repo/client/public
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

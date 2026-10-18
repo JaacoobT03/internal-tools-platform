@@ -10,31 +10,41 @@ Rules for every agent and human contributor. Read the critical rules first; deta
 4. **PII:** email and card numbers are masked by default. Reveal requires a permission and writes an audit entry. ([ADR 0005](.agents/decisions/0005-pii-masking-by-default.md))
 5. **Money:** integer cents + currency code, never floats. Payments only via the payments adapter, always with an idempotency key. ([ADR 0006](.agents/decisions/0006-money-and-payments-adapter.md))
 6. **Isolation:** apps live in `server/src/apps/<name>` and `client/app/<name>`. Apps import platform code only, never another app. ([ADR 0007](.agents/decisions/0007-app-isolation-and-ownership.md))
-7. **Ownership:** app PRs must not modify platform code (`server/src/platform/`, `client/lib/`, harness files). ([ADR 0007](.agents/decisions/0007-app-isolation-and-ownership.md))
+7. **Ownership:** app PRs must not modify platform code (`server/src/platform/`, `client/lib/`, harness files). Only exception: an app PR may add its own `server/prisma/schema/<app>.prisma`, its own migrations, and one module registration in `server/src/app.module.ts`, reviewed by the platform owner via CODEOWNERS. ([ADR 0007](.agents/decisions/0007-app-isolation-and-ownership.md))
 8. **Workflow:** spec → failing test → implementation. Lint, build and tests must be green. ([ADR 0008](.agents/decisions/0008-definition-of-done-and-new-tech.md))
 9. **New tech:** ask before introducing new foundational technology (framework, database, auth provider, queue, ORM, etc.). ([ADR 0008](.agents/decisions/0008-definition-of-done-and-new-tech.md))
 
 ## Enforcement status
 
-| Rule | Enforcement | Status |
-|---|---|---|
-| 1. Permission per endpoint | NestJS convention test scanning controllers for `@RequirePermission()` / `@Public()` | planned |
-| 2. Append-only audit | No UPDATE/DELETE grants on audit table; no update/delete paths on audit entity | planned |
-| 3. Two-person approvals | Per-app tests: self-approval refused (403); above-threshold pending until approved | planned |
-| 4. PII masking | Per-app tests: responses masked; reveal writes audit entry | planned |
-| 5. Money as integer cents | Money-DTO lint rule forbidding float fields | planned |
-| 6. No cross-app imports | ESLint boundary rules | planned |
-| 7. App PRs don't touch platform | CODEOWNERS + branch protection (code owner review required) | planned |
-| 8. Spec → test → impl, green CI | CI workflow (lint/build/test steps) | planned |
-| 9. Ask before new tech | Written rule only | planned |
+| Rule                                                 | Enforcement                                                                                                                                       | Status   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1. Permission per endpoint                           | NestJS convention test scanning controllers for `@RequirePermission()` / `@Public()`                                                              | planned  |
+| 2. Append-only audit                                 | No UPDATE/DELETE grants on audit table; no update/delete paths on audit entity                                                                    | planned  |
+| 3. Two-person approvals                              | Per-app tests: self-approval refused (403); above-threshold pending until approved                                                                | planned  |
+| 4. PII masking                                       | Per-app tests: responses masked; reveal writes audit entry                                                                                        | planned  |
+| 5. Money as integer cents                            | Money-DTO lint rule forbidding float fields                                                                                                       | planned  |
+| 6. No cross-app imports; platform never imports apps | `eslint-plugin-boundaries` rules in `eslint.config.mjs`; each rule proven to fail on a deliberate violation by `tools/eslint-boundaries.test.cjs` | enforced |
+| 7. App PRs don't touch platform                      | GitHub ruleset `protect-main` on `main` requires a PR and code owner review (`CODEOWNERS`). The repo admin can bypass it in this one-person repo. | enforced |
+| 8a. Lint, build and tests green before merge         | CI job `ci` plus the required status check in the GitHub ruleset `protect-main`                                                                   | planned  |
+| 8b. Spec → failing test → implementation             | Written only; reviewer checks                                                                                                                     | planned  |
+| 9. Ask before new tech                               | Written rule only                                                                                                                                 | planned  |
 
 > A rule may only be marked `enforced` when the ESLint rule or test implementing it exists in the repo. Do not claim enforcement that isn't there.
 
 ---
 
-## Repository state
+## Repository state and commands
 
-The repository currently contains only harness/governance files. No application code, `client/`, `server/`, or `docker-compose` files exist yet. Do not add them as part of harness changes.
+pnpm workspace with `client/` (Next.js) and `server/` (NestJS) skeletons, Postgres 16 via `compose.yaml`, Prisma 7 ([ADR 0009](.agents/decisions/0009-stack.md)). No business features yet.
+
+| Command           | What it does                                                                     |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `pnpm dev`        | `docker compose up --build`: postgres, server (:3001), client (:3000)            |
+| `pnpm lint`       | ESLint (incl. boundary rules) + `prettier --check`                               |
+| `pnpm build`      | Build server (incl. `prisma generate`) and client                                |
+| `pnpm test`       | Unit tests (root boundary tests, server, client)                                 |
+| `pnpm test:api`   | supertest API tests against `platform_test` in Postgres (needs postgres running) |
+| `pnpm db:migrate` | `prisma migrate deploy` against `DATABASE_URL`                                   |
 
 ## Auth and roles
 
@@ -81,13 +91,14 @@ The repository currently contains only harness/governance files. No application 
 
 - Server app code: `server/src/apps/<name>/`. Client app code: `client/app/<name>/`.
 - Apps may import from platform (`server/src/platform/`, `client/lib/`) only — never from another app.
-- Planned enforcement: ESLint boundary rules banning cross-app imports.
-- App PRs must not modify platform or harness code. Platform changes go in separate PRs.
+- Enforced: ESLint boundary rules (`eslint.config.mjs`) reject app → other app and platform → app imports; `tools/eslint-boundaries.test.cjs` proves it.
+- `server/src/app.module.ts` is the composition root and the only server file outside an app that registers app modules.
+- App PRs must not modify platform or harness code. Platform changes go in separate PRs. Exception: an app PR may add its own Prisma schema file `server/prisma/schema/<app>.prisma`, its own migrations in `server/prisma/migrations/`, and one module registration in `server/src/app.module.ts`; nothing else outside its app folders. The platform owner reviews these via CODEOWNERS.
 - Ownership is defined in `CODEOWNERS`. ([ADR 0007](.agents/decisions/0007-app-isolation-and-ownership.md))
 
 ### Branch protection
 
-`main` is protected: a PR is required, code owner review is required (via `CODEOWNERS`), and CI must pass. No CI job tries to detect whether a PR is app-scoped; the CODEOWNERS review requirement is the mechanism that keeps app PRs out of platform code.
+`main` is protected by the GitHub ruleset `protect-main`: a PR is required, code owner review is required (via `CODEOWNERS`), and the CI job `ci` is a required status check. No CI job tries to detect whether a PR is app-scoped; the CODEOWNERS review requirement is the mechanism. The repo admin can bypass the ruleset in this one-person repo.
 
 ## Definition of Done
 
@@ -129,3 +140,4 @@ All architecture decisions live in `.agents/decisions/`:
 - [0006 Money and payments adapter](.agents/decisions/0006-money-and-payments-adapter.md)
 - [0007 App isolation and ownership](.agents/decisions/0007-app-isolation-and-ownership.md)
 - [0008 Definition of Done and new tech](.agents/decisions/0008-definition-of-done-and-new-tech.md)
+- [0009 Stack](.agents/decisions/0009-stack.md)
