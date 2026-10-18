@@ -28,7 +28,8 @@ export default function NewRefundPage() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const value = (name: string) => String(form.get(name) ?? '').trim();
     const amountCents = parseEurToCents(value('amount'));
     if (amountCents === null) {
@@ -48,7 +49,12 @@ export default function NewRefundPage() {
       },
       userId,
     )
-      .then((refund) => router.push(`/refunds/${refund.id}`))
+      .then((refund) => {
+        // Next.js may keep this page mounted for back/forward navigation.
+        formElement.reset();
+        setSubmitting(false);
+        router.push(`/refunds/${refund.id}`);
+      })
       .catch((err: unknown) => {
         setSubmitting(false);
         setError(

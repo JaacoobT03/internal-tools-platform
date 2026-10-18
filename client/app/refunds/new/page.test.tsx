@@ -46,6 +46,8 @@ describe('New refund form', () => {
       reason: 'Item arrived damaged',
     });
     expect(push).toHaveBeenCalledWith('/refunds/new-id');
+    expect(screen.getByRole('button', { name: 'Create refund' })).toBeEnabled();
+    expect(screen.getByLabelText('Amount (EUR)')).toHaveValue('');
   });
 
   it('refuses an invalid amount before sending', () => {
