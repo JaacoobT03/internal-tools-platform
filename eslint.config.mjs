@@ -7,6 +7,7 @@ import boundaries from 'eslint-plugin-boundaries';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import platform from './tools/eslint-rules/index.mjs';
 
 // AGENTS.md rule 6 / ADR 0007: apps may import platform, never another app;
 // platform never imports apps. Proven by tools/eslint-boundaries.test.cjs.
@@ -31,6 +32,10 @@ const boundaryRules = {
     'boundaries/elements': [
       { type: 'server-app', pattern: 'server/src/apps/*', capture: ['app'] },
       { type: 'server-platform', pattern: 'server/src/platform' },
+      // Platform pages live in the (platform) route group. Listed before
+      // client-app (first match wins) so the client/app/* glob never treats
+      // the group as an app.
+      { type: 'client-platform', pattern: 'client/app/\\(platform\\)' },
       { type: 'client-app', pattern: 'client/app/*', capture: ['app'] },
       { type: 'client-platform', pattern: 'client/lib' },
     ],
@@ -72,6 +77,23 @@ const boundaryRules = {
   },
 };
 
+// ADR 0006: payment provider SDKs only inside the payments adapter.
+// Input validation: @Body()/@Query()/@Param() must pass a ZodValidationPipe.
+// Proven by tools/eslint-platform-rules.test.cjs.
+const platformRules = [
+  {
+    files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    ignores: ['**/server/src/platform/payments/**'],
+    plugins: { platform },
+    rules: { 'platform/no-payment-sdk-import': 'error' },
+  },
+  {
+    files: ['**/server/src/**/*.ts', '**/server/test/**/*.ts'],
+    plugins: { platform },
+    rules: { 'platform/validated-request-input': 'error' },
+  },
+];
+
 export default defineConfig([
   globalIgnores([
     '**/dist/**',
@@ -105,5 +127,6 @@ export default defineConfig([
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   boundaryRules,
+  ...platformRules,
   prettier,
 ]);

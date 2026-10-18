@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforcement: planned (mandated per-app tests).
+Accepted. Enforcement: enforced (masking/reveal unit tests + `asUser` PII tripwire); reveal correctness via per-app tests.
 
 ## Context
 
@@ -18,3 +18,4 @@ Internal tools routinely display customer emails and card numbers. Most users on
 
 - Every app with personal data must include tests proving API responses never contain unmasked email or card numbers unless the reveal endpoint is used, and every reveal creates an audit entry.
 - Masking happens server-side; the client never receives unmasked values outside the reveal flow.
+- Implemented: `maskEmail`, `maskCard`, `@RevealEndpoint()` and the audited `PiiRevealService.reveal()` in `server/src/platform/pii/`. The `asUser` API-test tripwire fails any test whose response contains an unmasked email or card number outside a declared reveal endpoint.

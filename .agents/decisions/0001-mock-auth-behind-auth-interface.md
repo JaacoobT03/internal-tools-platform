@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforcement: written rule only.
+Accepted. Enforcement: written rule (replaceability); production refusal of the mock is tested (`server/test/auth.api-spec.ts`).
 
 ## Context
 
@@ -20,3 +20,4 @@ Apps need authenticated users and roles from day one, but the organization's SSO
 - Real SSO (Entra/Okta) replaces the mock implementation later without touching app code.
 - The mock must never be reachable in production; the swap is a platform change reviewed by code owners.
 - Tests can switch roles cheaply to exercise permission and approval rules.
+- Implemented: `PlatformAuth` behind the `PLATFORM_AUTH` token; `MockAuthService` reads `X-User-Id` (unknown id → 401) and refuses to bootstrap with `NODE_ENV=production`. The client user switcher lives in `client/lib/header.tsx`.

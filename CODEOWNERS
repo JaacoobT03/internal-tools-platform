@@ -11,10 +11,17 @@
 # Platform code
 /server/src/platform/           @JaacoobT03
 /client/lib/                    @JaacoobT03
+/client/app/(platform)/         @JaacoobT03
+/client/app/layout.tsx          @JaacoobT03
+/client/app/page.tsx            @JaacoobT03
+/client/app/globals.css         @JaacoobT03
+/server/test/helpers/           @JaacoobT03
+/server/test/fixtures/          @JaacoobT03
 
 # App-touchable platform locations (ADR 0007): an app PR may add its own
-# server/prisma/schema/<app>.prisma, its migrations and one module line in
-# app.module.ts. The platform owner reviews those changes.
+# server/prisma/schema/<app>.prisma, its migrations, one module line in
+# app.module.ts and one entry in client/lib/registry.ts. The platform owner
+# reviews those changes.
 /server/prisma/                 @JaacoobT03
 /server/src/app.module.ts       @JaacoobT03
 /server/src/main.ts             @JaacoobT03

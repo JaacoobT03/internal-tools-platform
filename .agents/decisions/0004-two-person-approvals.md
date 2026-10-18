@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforcement: planned (mandated per-app tests).
+Accepted. Enforcement: enforced for the platform approval service (tests); app thresholds via mandated per-app tests.
 
 ## Context
 
@@ -20,4 +20,4 @@ High-impact actions (e.g. refunds above EUR 500) must not be executable by a sin
 - Every app with approvals must include tests proving:
   - a requester approving their own request is refused (403);
   - an action above the threshold has no effect until a second person with the approver role approves it.
-- Planned enforcement is these mandated tests; until they exist per app, the rule is enforced by review.
+- The platform `ApprovalsService` is proven by `server/test/approvals.api-spec.ts`: pending has no effect, self-approval 403, effect once in one transaction with status change and audit entry, double-approve 409. App-specific thresholds remain covered by per-app tests.

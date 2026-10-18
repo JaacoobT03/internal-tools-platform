@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforcement: planned.
+Accepted. Enforcement: enforced (DB trigger + `asUser` audit tripwire); separate DB role still planned.
 
 ## Context
 
@@ -16,6 +16,7 @@ Replacing Power Apps workflows means we must be able to answer "who changed what
 
 ## Consequences
 
-- Planned enforcement: the application database user has no UPDATE/DELETE grants on the audit table, and the audit entity/repository exposes no update or delete paths.
+- Enforced: a trigger on `audit_entry` rejects UPDATE, DELETE and TRUNCATE (tested), `AuditService` exposes no update or delete paths, and the `asUser` API-test tripwire fails a test when a successful mutation writes no audit entry.
+- Gap: the application connects as the table owner, which could drop the trigger. Planned: a separate database role with only INSERT/SELECT on the audit table.
 - The `auditor` role reads the audit log; nobody edits it.
 - Audit writes are part of the same unit of work as the mutation, so a mutation without an audit entry is a bug.
